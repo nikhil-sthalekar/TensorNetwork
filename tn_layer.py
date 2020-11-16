@@ -5,6 +5,7 @@ import tensorflow as tf
 # tf.enable_v2_behavior()
 # Import tensornetwork
 import tensornetwork as tn
+from matplotlib import cm
 # Settting backend to tensorflow otherwise numpy is usedB
 
 tn.set_default_backend("tensorflow")
@@ -16,7 +17,7 @@ class TNLayer(tf.keras.layers.Layer):
         # Creating variables for the layer.
         self.a_var = tf.Variable(
             tf.random.normal(
-                shape=(8, 8, 2),
+                shape=(8, 8, 3),
                 stddev=1.0/16.0
             ),
             name="a",
@@ -24,7 +25,7 @@ class TNLayer(tf.keras.layers.Layer):
         )
         self.b_var = tf.Variable(
             tf.random.normal(
-                shape=(8, 8, 2),
+                shape=(8, 8, 3),
                 stddev=1.0/16.0
             ),
             name="b",
@@ -79,7 +80,7 @@ Dense = tf.keras.layers.Dense
 
 tn_model = tf.keras.Sequential(
     [
-        tf.keras.Input(shape=(2,)),
+        tf.keras.Input(shape=(3,)),
         Dense(64, activation=tf.nn.swish),
         # Here we have out Matrix Product State  in lieu of a dense layer
         TNLayer(),
@@ -93,10 +94,10 @@ print(summary)
 
 X = np.concatenate(
         [
-            np.random.randn(20, 2) + np.array([3, 3]),
-            np.random.randn(20, 2) + np.array([-3, -3]),
-            np.random.randn(20, 2) + np.array([-3, 3]),
-            np.random.randn(20, 2) + np.array([3, -3]),
+            np.random.randn(20, 3) + np.array([3, 3, 3]),
+            np.random.randn(20, 3) + np.array([-3, -3, -3]),
+            np.random.randn(20, 3) + np.array([-3, 3, 3]),
+            np.random.randn(20, 3) + np.array([3, -3, -3]),
         ]
 )
 
@@ -112,11 +113,13 @@ fit = tn_model.fit(X, Y, epochs=300, verbose=1)
 h = 1.0
 x_min, x_max = X[:, 0].min() - 5, X[:, 0].max() + 5
 y_min, y_max = X[:, 1].min() - 5, X[:, 1].max() + 5
+z_min, z_max = X[:, 2].min() - 5, X[:, 2].max() + 5
 
 # Making a meshgrid for plotting
-xx, yy = np.meshgrid(
+xx, yy, zz = np.meshgrid(
     np.arange(x_min, x_max, h),
     np.arange(y_min, y_max, h),
+    np.arange(z_min, z_max, h)
 )
 
 #print(xx)
@@ -124,26 +127,40 @@ xx, yy = np.meshgrid(
 # The Predictio
 
 
-input =  np.c_[xx.ravel(), yy.ravel()]
+input =  np.c_[xx.ravel(), yy.ravel(), zz.ravel()]
 print(X.shape)
-print(xx.shape)
-print(yy.shape)
+Z = tn_model.predict(input)
 print(input.shape)
-Z = tn_model.predict(np.c_[xx.ravel(), yy.ravel()])
 print(Z.shape)
 
-Z = Z.reshape(xx.shape)
-print(Z.shape)
+
+
+fig = plt.figure()
+
+
+
+ax = fig.add_subplot(1,2,1, projection='3d')
+
+p1 = ax.scatter(input[:, 0], input[:, 1], input[:, 2], c = Z, cmap=cm.coolwarm)
 
 # Putting the results in a color plot
 
+fig.colorbar(p1)
+
+ax.title.set_text('Prediction')
+
+ax = fig.add_subplot(1,2,2, projection= '3d')
 
 
-plt.contourf(xx, yy, Z)
+p2 = ax.scatter(X[:, 0], X[:, 1], X[:, 2], c = Y, cmap=cm.coolwarm)
 
 
+fig.colorbar(p2)
+#plt.contourf(xx, yy, Z)
 
-plt.scatter(X[:, 0], X[:, 1], c=Y, cmap=plt.cm.Paired)
+ax.title.set_text('Training Data')
+
+#plt.scatter(X[:, 0], X[:, 1], c=Y, cmap=plt.cm.Paired)
 
 
 
